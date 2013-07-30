@@ -3,7 +3,7 @@ package occupied
 import (
 	"appengine"
 	"appengine/datastore"
-	"html/template"
+	"text/template"
 	"net/http"
 	"time"
 )
@@ -14,12 +14,13 @@ type Record struct {
 }
 
 func init() {
-	http.HandleFunc("/", latest)
+	http.HandleFunc("/", latest_json)
+	http.HandleFunc("/latest.json", latest_json)
 	http.HandleFunc("/record/opened", opened)
 	http.HandleFunc("/record/closed", closed)
 }
 
-func latest(w http.ResponseWriter, r *http.Request) {
+func latest_json(w http.ResponseWriter, r *http.Request) {
 	c := appengine.NewContext(r)
 	q := datastore.NewQuery("Record").Order("-Date").Limit(1)
 	records := make([]Record, 0, 1)
@@ -27,22 +28,14 @@ func latest(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	if err := latestTemplate.Execute(w, records); err != nil {
+	if err := latestJsonTemplate.Execute(w, records[0]); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
 
-var latestTemplate = template.Must(template.New("book").Parse(latestTemplateHTML))
+var latestJsonTemplate = template.Must(template.New("latest_json").Parse(latestJsonTemplateStr))
 
-const latestTemplateHTML = `
-<html>
-  <body>
-    {{range .}}
-      {"state": {{.Occupied}}}
-    {{end}}
-  </body>
-</html>
-`
+const latestJsonTemplateStr = `{"occupied": {{.Occupied}}}`
 
 func opened(w http.ResponseWriter, r *http.Request) {
 	c := appengine.NewContext(r)
