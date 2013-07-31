@@ -53,6 +53,7 @@ const latestJsonTemplateStr = `{"occupied": {{.Occupied}}}`
 const latestHtmlTemplateStr = `
 <html>
 <head>
+<meta http-equiv="refresh" content="5">
 <title>{{if .Occupied}}Occupied{{else}}Available{{end}}</title>
 </head><body>
 <img src="/static/img/{{if .Occupied}}occupied{{else}}vacant{{end}}.jpg">
