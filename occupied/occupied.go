@@ -14,7 +14,7 @@ type Record struct {
 }
 
 func init() {
-	http.HandleFunc("/", latest_json)
+	http.HandleFunc("/", latest_html)
 	http.HandleFunc("/latest.json", latest_json)
 	http.HandleFunc("/record/opened", opened)
 	http.HandleFunc("/record/closed", closed)
@@ -33,9 +33,31 @@ func latest_json(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func latest_html(w http.ResponseWriter, r *http.Request) {
+	c := appengine.NewContext(r)
+	q := datastore.NewQuery("Record").Order("-Date").Limit(1)
+	records := make([]Record, 0, 1)
+	if _, err := q.GetAll(c, &records); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if err := latestHtmlTemplate.Execute(w, records[0]); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+}
+
 var latestJsonTemplate = template.Must(template.New("latest_json").Parse(latestJsonTemplateStr))
+var latestHtmlTemplate = template.Must(template.New("latest_html").Parse(latestHtmlTemplateStr))
 
 const latestJsonTemplateStr = `{"occupied": {{.Occupied}}}`
+const latestHtmlTemplateStr = `
+<html>
+<head>
+<title>{{if .Occupied}}Occupied{{else}}Available{{end}}</title>
+</head><body>
+<img src="/static/img/{{if .Occupied}}occupied{{else}}vacant{{end}}.jpg">
+</body>
+`
 
 func opened(w http.ResponseWriter, r *http.Request) {
 	c := appengine.NewContext(r)
