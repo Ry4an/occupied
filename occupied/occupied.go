@@ -3,14 +3,14 @@ package occupied
 import (
 	"appengine"
 	"appengine/datastore"
-	"text/template"
 	"net/http"
+	"text/template"
 	"time"
 )
 
 type Record struct {
 	Occupied bool
-	Date  time.Time
+	Date     time.Time
 }
 
 func init() {
@@ -55,6 +55,9 @@ const latestHtmlTemplateStr = `
 <head>
 <meta http-equiv="refresh" content="5">
 <title>{{if .Occupied}}Occupied{{else}}Available{{end}}</title>
+<link rel="icon" 
+      type="image/png" 
+      href="/static/img/{{if .Occupied}}df-poop-occupied{{else}}df-poop-vacant{{end}}.png">
 </head><body>
 <img src="/static/img/{{if .Occupied}}occupied{{else}}vacant{{end}}.jpg">
 </body>
@@ -64,7 +67,7 @@ func opened(w http.ResponseWriter, r *http.Request) {
 	c := appengine.NewContext(r)
 	rec := Record{
 		Occupied: false,
-		Date:  time.Now(),
+		Date:     time.Now(),
 	}
 	_, err := datastore.Put(c, datastore.NewIncompleteKey(c, "Record", nil), &rec)
 	if err != nil {
@@ -78,7 +81,7 @@ func closed(w http.ResponseWriter, r *http.Request) {
 	c := appengine.NewContext(r)
 	rec := Record{
 		Occupied: true,
-		Date:  time.Now(),
+		Date:     time.Now(),
 	}
 	_, err := datastore.Put(c, datastore.NewIncompleteKey(c, "Record", nil), &rec)
 	if err != nil {
