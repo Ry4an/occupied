@@ -21,6 +21,9 @@ func init() {
 }
 
 func latest_json(w http.ResponseWriter, r *http.Request) {
+    w.Header().Set("Content-Type", "text/json")
+    w.Header().Set("Cache-Control", "no-cache")
+    w.Header().Set("Access-Control-Allow-Origin", "*")
 	c := appengine.NewContext(r)
 	q := datastore.NewQuery("Record").Order("-Date").Limit(1)
 	records := make([]Record, 0, 1)
@@ -34,6 +37,8 @@ func latest_json(w http.ResponseWriter, r *http.Request) {
 }
 
 func latest_html(w http.ResponseWriter, r *http.Request) {
+    w.Header().Set("Cache-Control", "no-cache")
+    w.Header().Set("Access-Control-Allow-Origin", "*")
 	c := appengine.NewContext(r)
 	q := datastore.NewQuery("Record").Order("-Date").Limit(1)
 	records := make([]Record, 0, 1)
