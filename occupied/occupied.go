@@ -20,33 +20,47 @@ func init() {
 	http.HandleFunc("/record/closed", closed)
 }
 
-func latest_json(w http.ResponseWriter, r *http.Request) {
-    w.Header().Set("Content-Type", "text/json")
-    w.Header().Set("Cache-Control", "no-cache")
-    w.Header().Set("Access-Control-Allow-Origin", "*")
+func get_latest_record(r *http.Request) (rec Record, err error) {
 	c := appengine.NewContext(r)
 	q := datastore.NewQuery("Record").Order("-Date").Limit(1)
 	records := make([]Record, 0, 1)
 	if _, err := q.GetAll(c, &records); err != nil {
+        return Record{}, err
+	}
+    if len(records) == 0 {
+        return Record{false, time.Now()}, nil
+    }
+    return records[0], nil
+}
+
+func latest_json(w http.ResponseWriter, r *http.Request) {
+    w.Header().Set("Content-Type", "text/json")
+    add_standard_headers(w)
+    var rec Record
+    var err error
+	if rec, err = get_latest_record(r); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	if err := latestJsonTemplate.Execute(w, records[0]); err != nil {
+	if err := latestJsonTemplate.Execute(w, rec); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
 
-func latest_html(w http.ResponseWriter, r *http.Request) {
+func add_standard_headers(w http.ResponseWriter) {
     w.Header().Set("Cache-Control", "no-cache")
     w.Header().Set("Access-Control-Allow-Origin", "*")
-	c := appengine.NewContext(r)
-	q := datastore.NewQuery("Record").Order("-Date").Limit(1)
-	records := make([]Record, 0, 1)
-	if _, err := q.GetAll(c, &records); err != nil {
+}
+
+func latest_html(w http.ResponseWriter, r *http.Request) {
+    add_standard_headers(w)
+    var rec Record
+    var err error
+	if rec, err = get_latest_record(r); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	if err := latestHtmlTemplate.Execute(w, records[0]); err != nil {
+	if err := latestHtmlTemplate.Execute(w, rec); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
