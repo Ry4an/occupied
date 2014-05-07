@@ -24,6 +24,28 @@ func init() {
 	http.HandleFunc("/record/closed", closed)
 }
 
+func set_record_into_memcache(c appengine.Context, record Record) error {
+
+	recordJson, err := json.Marshal(record)
+	if err != nil {
+		return err
+	}
+
+	// now put the json into memcached
+	item := &memcache.Item{
+		Key:   RECORD_KEY,
+		Value: []byte(recordJson),
+	}
+
+	if err := memcache.Set(c, item); err != nil {
+		return err
+	}
+
+	c.Infof("added %v", string(recordJson))
+
+	return nil
+}
+
 func get_latest_record_cached(r *http.Request) (rec Record, err error) {
 	c := appengine.NewContext(r)
 	var record Record
@@ -32,28 +54,22 @@ func get_latest_record_cached(r *http.Request) (rec Record, err error) {
 			return record, err
 		}
 
-		recordJson, err := json.Marshal(record)
-		if err != nil {
-			return Record{}, err
-		}
-
-		// now put the json into memcached
-		item := &memcache.Item{
-			Key:   RECORD_KEY,
-			Value: []byte(recordJson),
-		}
-
-		if err := memcache.Set(c, item); err != nil {
+		if err := set_record_into_memcache(c, record); err != nil {
+			c.Infof("error during set_record_into_cache %v", err)
 			return Record{}, err
 		}
 
 	} else {
+		c.Infof("got item from memcached: %v", string(recordItem.Value))
 		// unmarshal the json into record
-		record := Record{}
 		if err := json.Unmarshal(recordItem.Value, &record); err != nil {
+			c.Infof("error during unmarshal %v", err)
 			return Record{}, err
 		}
 	}
+
+	c.Infof("get_latest_record_cached returning %v", record)
+
 	return record, nil
 }
 
@@ -95,7 +111,7 @@ func latest_html(w http.ResponseWriter, r *http.Request) {
 	add_standard_headers(w)
 	var rec Record
 	var err error
-	if rec, err = get_latest_record(r); err != nil {
+	if rec, err = get_latest_record_cached(r); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -127,12 +143,13 @@ func opened(w http.ResponseWriter, r *http.Request) {
 		Occupied: false,
 		Date:     time.Now(),
 	}
-	_, err := datastore.Put(c, datastore.NewIncompleteKey(c, "Record", nil), &rec)
-	if err != nil {
+
+	if err := set_record_into_memcache(c, rec); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	if err := memcache.Delete(c, RECORD_KEY); err != memcache.ErrCacheMiss {
+	_, err := datastore.Put(c, datastore.NewIncompleteKey(c, "Record", nil), &rec)
+	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -145,12 +162,12 @@ func closed(w http.ResponseWriter, r *http.Request) {
 		Occupied: true,
 		Date:     time.Now(),
 	}
-	_, err := datastore.Put(c, datastore.NewIncompleteKey(c, "Record", nil), &rec)
-	if err != nil {
+	if err := set_record_into_memcache(c, rec); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	if err := memcache.Delete(c, RECORD_KEY); err != memcache.ErrCacheMiss {
+	_, err := datastore.Put(c, datastore.NewIncompleteKey(c, "Record", nil), &rec)
+	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
