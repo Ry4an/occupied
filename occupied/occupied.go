@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-const RECORD_KEY = "record"
+const RecordKey = "record"
 
 type Record struct {
 	Occupied bool
@@ -33,7 +33,7 @@ func set_record_into_memcache(c appengine.Context, record Record) error {
 
 	// now put the json into memcached
 	item := &memcache.Item{
-		Key:   RECORD_KEY,
+		Key:   RecordKey,
 		Value: []byte(recordJson),
 	}
 
@@ -49,7 +49,7 @@ func set_record_into_memcache(c appengine.Context, record Record) error {
 func get_latest_record_cached(r *http.Request) (rec Record, err error) {
 	c := appengine.NewContext(r)
 	var record Record
-	if recordItem, err := memcache.Get(c, RECORD_KEY); err == memcache.ErrCacheMiss {
+	if recordItem, err := memcache.Get(c, RecordKey); err == memcache.ErrCacheMiss {
 		if record, err := get_latest_record(r); err != nil {
 			return record, err
 		}
